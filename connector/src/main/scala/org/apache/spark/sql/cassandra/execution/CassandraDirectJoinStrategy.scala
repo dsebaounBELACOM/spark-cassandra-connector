@@ -6,6 +6,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SparkSession, Strategy}
 import org.apache.spark.sql.cassandra.{AlwaysOff, AlwaysOn, Automatic, CassandraSourceRelation}
 import org.apache.spark.sql.cassandra.CassandraSourceRelation._
+import org.apache.spark.sql.cassandra.execution.WeaklyComparableExpression.asWeaklyComparable
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, Expression, NamedExpression}
 import org.apache.spark.sql.catalyst.planning.{ExtractEquiJoinKeys, PhysicalOperation}
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -301,9 +302,9 @@ object CassandraDirectJoinStrategy extends Logging {
         attributes, _,
         LogicalRelation(cassandraSource: CassandraSourceRelation, _, _, _)) =>
 
-        val joinKeyAliases =
-          aliasMap(attributes)
-            .filter{ case (_, value) => joinKeys.contains(value) }
+        val comparableJoinKeys = joinKeys.map(asWeaklyComparable)
+        val joinKeyAliases = aliasMap(attributes)
+            .filter { case (_, attr) => comparableJoinKeys.contains(asWeaklyComparable(attr)) }
         val partitionKeyNames = cassandraSource.tableDef.partitionKey.map(_.columnName)
         val allKeysPresent = partitionKeyNames.forall(joinKeyAliases.contains)
 
@@ -334,7 +335,5 @@ object CassandraDirectJoinStrategy extends Logging {
       case _ => false
     }
   }
-
-
 
 }

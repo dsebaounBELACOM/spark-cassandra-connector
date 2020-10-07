@@ -3,6 +3,7 @@ package org.apache.spark.sql.cassandra.execution
 import com.datastax.spark.connector.{ColumnName, SomeColumns}
 import com.datastax.spark.connector.rdd.{CassandraJoinRDD, CassandraLeftJoinRDD, CassandraTableScanRDD}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.cassandra.execution.WeaklyComparableExpression.asWeaklyComparable
 import org.apache.spark.sql.cassandra.execution.unsafe.{UnsafeRowReaderFactory, UnsafeRowWriterFactory}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{And, Attribute, BindReferences, EqualTo, Expression, GenericInternalRow, JoinedRow, UnsafeProjection, UnsafeRow}
@@ -41,7 +42,7 @@ case class CassandraDirectJoinExec(
   val primaryKeys = cassandraScan.tableDef.primaryKey.map(_.columnName)
   val cassandraSchema = cassandraPlan.schema
 
-  val attributeToCassandra = aliasMap.map(_.swap)
+  val attributeToCassandra = aliasMap.map { case (k,v) => ( asWeaklyComparable(v), k)}
 
   val leftJoinCouplets =
     if (cassandraSide == BuildLeft) leftKeys.zip(rightKeys) else rightKeys.zip(leftKeys)
